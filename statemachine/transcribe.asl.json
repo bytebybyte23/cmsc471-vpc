@@ -1,0 +1,62 @@
+{
+  "Comment": "State machine to fetch image, call Textract, and save results",
+  "StartAt": "FetchImage",
+  "States": {
+    "FetchImage": {
+      "Type": "Task",
+      "Resource": "${FetchImageFunctionArn}",
+      "ResultPath": "$.fetchResult",
+      "Next": "CallTextract",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "SaveResults"
+        }
+      ]
+    },
+    "CallTextract": {
+      "Type": "Task",
+      "Resource": "${CallTextractFunctionArn}",
+      "ResultPath": "$.textractResult",
+      "Next": "SaveResults",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "SaveResults"
+        }
+      ]
+    },
+    "SaveResults": {
+      "Type": "Task",
+      "Resource": "${SaveResultsFunctionArn}",
+      "ResultPath": "$.saveResult",
+      "End": true,
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    }
+  }
+}

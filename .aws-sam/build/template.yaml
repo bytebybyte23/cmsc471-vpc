@@ -1,0 +1,479 @@
+Parameters:
+  LinboxLogGroupRetentionInDays:
+    Type: Number
+    Default: 7
+    Description: Log group retention period for inbox functions
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: ''
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: ''
+  MyBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: MyBucketLogs
+    Properties:
+      BucketName:
+        Fn::Sub: ${AWS::StackName}-inboxbucket
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName:
+          Ref: MyBucketLogs
+  MyBucketLogs:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${AWS::StackName}-inboxbucket-logs
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Fn::Sub:
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Api
+      StageName: Prod
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      BinaryMediaTypes:
+      - image/*
+      - multipart/form-data
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: HealthFunction
+      CodeUri: HealthFunction
+      Handler: handler.handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          INBOXBUCKET_NAME:
+            Ref: MyBucket
+      Events:
+        ApiGET:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /api/health
+            Method: GET
+    Metadata:
+      SamResourceId: HealthFunction
+  HealthFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${HealthFunction}
+      RetentionInDays: 7
+  StaticProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: StaticProxyFunction
+      CodeUri: StaticProxyFunction
+      Handler: proxy.proxy_handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          MYBUCKET_BUCKET_NAME:
+            Ref: MyBucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /
+            Method: GET
+    Metadata:
+      SamResourceId: StaticProxyFunction
+  StaticProxyFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${StaticProxyFunction}
+      RetentionInDays: 7
+  InboxBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${AWS::StackName}-inboxbuck-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: aws:kms
+            KMSMasterKeyID: alias/aws/s3
+      PublicAccessBlockConfiguration:
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  InboxBucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: InboxBucket
+      PolicyDocument:
+        Id: RequireEncryptionInTransit
+        Version: '2012-10-17'
+        Statement:
+        - Principal: '*'
+          Action: '*'
+          Effect: Deny
+          Resource:
+          - Fn::GetAtt:
+            - InboxBucket
+            - Arn
+          - Fn::Sub: ${InboxBucket.Arn}/*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+  JobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: ${AWS::StackName}-jobs
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: jobId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: jobId
+        KeyType: HASH
+  SubmitJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: SubmitJobFunction
+      CodeUri: SubmitJobFunction
+      Handler: handler.handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          JOBS_TABLE_NAME:
+            Ref: JobsTable
+          STATE_MACHINE_ARN:
+            Ref: TranscribeStateMachine
+      Events:
+        ApiPostJobs:
+          Type: Api
+          Properties:
+            Path: /api/jobs
+            Method: POST
+            RestApiId:
+              Ref: Api
+    Metadata:
+      SamResourceId: SubmitJobFunction
+  SubmitJobFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${SubmitJobFunction}
+      RetentionInDays: 7
+  PollJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: PollJobFunction
+      CodeUri: PollJobFunction
+      Handler: handler.handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          JOBS_TABLE_NAME:
+            Ref: JobsTable
+      Events:
+        ApiGetJob:
+          Type: Api
+          Properties:
+            Path: /api/jobs/{jobId}
+            Method: GET
+            RestApiId:
+              Ref: Api
+    Metadata:
+      SamResourceId: PollJobFunction
+  PollJobFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${PollJobFunction}
+      RetentionInDays: 7
+  FetchImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: FetchImageFunction
+      Handler: handler.handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          INBOX_BUCKET_NAME:
+            Ref: InboxBucket
+    Metadata:
+      SamResourceId: FetchImageFunction
+  FetchImageFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${FetchImageFunction}
+      RetentionInDays: 7
+  CallTextractFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: CallTextractFunction
+      Handler: handler.handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          INBOX_BUCKET_NAME:
+            Ref: InboxBucket
+    Metadata:
+      SamResourceId: CallTextractFunction
+  CallTextractFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${CallTextractFunction}
+      RetentionInDays: 7
+  SaveResultsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: SaveResultsFunction
+      Handler: handler.handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          JOBS_TABLE_NAME:
+            Ref: JobsTable
+    Metadata:
+      SamResourceId: SaveResultsFunction
+  SaveResultsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${SaveResultsFunction}
+      RetentionInDays: 7
+  TranscribeStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: ..\..\statemachine\transcribe.asl.json
+      DefinitionSubstitutions:
+        FetchImageFunctionArn:
+          Fn::GetAtt:
+          - FetchImageFunction
+          - Arn
+        CallTextractFunctionArn:
+          Fn::GetAtt:
+          - CallTextractFunction
+          - Arn
+        SaveResultsFunctionArn:
+          Fn::GetAtt:
+          - SaveResultsFunction
+          - Arn
+      Role: arn:aws:iam::659473945986:role/LabRole
+  RecordsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: RecordsFunction
+      CodeUri: RecordsFunction
+      Handler: handler.handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          JOBS_TABLE_NAME:
+            Ref: JobsTable
+      Events:
+        ApiGetRecords:
+          Type: Api
+          Properties:
+            Path: /api/records
+            Method: GET
+            RestApiId:
+              Ref: Api
+        ApiDeleteRecord:
+          Type: Api
+          Properties:
+            Path: /api/records/{id}
+            Method: DELETE
+            RestApiId:
+              Ref: Api
+    Metadata:
+      SamResourceId: RecordsFunction
+  RecordsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${RecordsFunction}
+      RetentionInDays: 7
+  Linbox:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description:
+        Fn::Sub:
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: Linbox
+      CodeUri: Linbox
+      Handler: handler.handler
+      Runtime: python3.13
+      Role: arn:aws:iam::659473945986:role/LabRole
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Environment:
+        Variables:
+          INBOX_BUCKET_NAME:
+            Ref: InboxBucket
+          JOBS_TABLE_NAME:
+            Ref: JobsTable
+      Events:
+        ApiGETInbox:
+          Type: Api
+          Properties:
+            Path: /api/inbox
+            Method: GET
+            RestApiId:
+              Ref: Api
+        ApiPostInbox:
+          Type: Api
+          Properties:
+            Path: /api/inbox
+            Method: POST
+            RestApiId:
+              Ref: Api
+        ApiDeleteInbox:
+          Type: Api
+          Properties:
+            Path: /api/inbox/{key}
+            Method: DELETE
+            RestApiId:
+              Ref: Api
+    Metadata:
+      SamResourceId: Linbox
+  LinboxLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${Linbox}
+      RetentionInDays:
+        Ref: LinboxLogGroupRetentionInDays
+Outputs:
+  HelloWorldApi:
+    Description: API Gateway endpoint URL for Prod stage for Hello World function
+    Value:
+      Fn::Sub: https://${Api}.execute-api.${AWS::Region}.amazonaws.com/Prod/
+  FrontendBucketName:
+    Value:
+      Ref: MyBucket
+  FrontendDeployCommand:
+    Description: Run this command to deploy index.html to s3 bucket
+    Value:
+      Fn::Sub: aws s3 cp ./wwwroot/index.html s3://${MyBucket}/index.html
+  FrontendBucketLogsName:
+    Description: Run this command to remove index.html from s3 bucket
+    Value:
+      Fn::Sub: aws rm s3://${MyBucket}/index.html
+  RemoveStackCommand:
+    Description: Run this command to remove the stack and all resources
+    Value:
+      Fn::Sub: aws cloudformation delete-stack --stack-name ${AWS::StackName}
