@@ -116,6 +116,48 @@ aws cloudformation delete-stack --stack-name cmsc471-hello-stack
 | Performance Efficiency | Lambda serverless compute, API Gateway regional endpoint |
 | Cost Optimization | Serverless pay-per-use, DynamoDB PAY_PER_REQUEST, Lambda auto-scaling |
 
+### Well-Architected Questions and Answers
+
+**Q1 (Operational Excellence): How do you monitor and respond to operational events?**
+All Lambda functions have CloudWatch Log Groups with 7-day retention. X-Ray active tracing is enabled on every Lambda and API Gateway stage, providing end-to-end request tracing. CloudWatch captures all Step Functions state transitions, allowing us to identify failures at each workflow step (FetchImage, CallTextract, SaveResults).
+
+**Q2 (Security): How do you protect data at rest and in transit?**
+All S3 buckets use AES-256 server-side encryption. The InboxBucket uses KMS encryption with a bucket policy that explicitly denies all HTTP (non-HTTPS) requests via the `aws:SecureTransport` condition. DynamoDB data is encrypted at rest by default. In production, least-privilege IAM roles would be created per Lambda function. The Learner Lab restricts IAM policy creation so LabRole is used as a substitute.
+
+**Q3 (Reliability): How do you handle failures in the transcription workflow?**
+The Step Functions state machine implements retry logic on all three states (FetchImage, CallTextract, SaveResults) with exponential backoff — starting at 2 seconds, up to 3 attempts, with a backoff rate of 2. Each state also has a Catch block that routes failures to SaveResults, which marks the job as FAILED in DynamoDB so the UI can display the error to the user.
+
+**Q4 (Performance Efficiency): How does the architecture scale under increased load?**
+All compute is serverless Lambda, which scales automatically from 0 to thousands of concurrent executions without any manual intervention. API Gateway handles request routing and throttling. DynamoDB uses PAY_PER_REQUEST billing mode which scales read/write capacity automatically. Step Functions can run thousands of parallel executions simultaneously.
+
+**Q5 (Cost Optimization): How do you minimize costs while maintaining functionality?**
+The entire stack uses serverless pay-per-use pricing — there are no idle EC2 instances or reserved capacity costs. DynamoDB uses on-demand billing. Lambda charges only for actual execution time. The InboxBucket has a Glacier lifecycle policy that transitions images to cheaper cold storage after 90 days. The estimated monthly cost is $25.59 for 1 million requests, scaling to $0 when idle.
+
+## Security and Compliance
+
+### Secure Resource Lock-down
+All S3 buckets block public access via `PublicAccessBlockConfiguration`. The InboxBucket enforces HTTPS-only access through a bucket policy denying requests where `aws:SecureTransport` is false. API Gateway uses HTTPS endpoints only. All Lambda functions run under the LabRole IAM role. In production, each Lambda would have its own least-privilege role with only the specific permissions it needs (e.g., FetchImageFunction would only have `s3:GetObject` on InboxBucket).
+
+### Data Protection
+- S3 buckets: AES-256 server-side encryption at rest
+- InboxBucket: KMS encryption with `alias/aws/s3`
+- DynamoDB: encrypted at rest by default
+- All API traffic: HTTPS enforced via API Gateway
+- S3 versioning enabled on MyBucket for data recovery
+
+### Access Limitations
+- API Gateway endpoints are public but unauthenticated (acceptable for a demo app)
+- In production, AWS Cognito or IAM authorizers would restrict access to known clients
+- Step Functions can only be triggered by SubmitJobFunction via the state machine ARN
+- Lambda functions cannot be invoked directly from the internet
+
+### Disaster Recovery
+- S3 versioning is enabled on MyBucket, allowing recovery of previous versions of index.html
+- DynamoDB on-demand mode provides built-in high availability across multiple AZs
+- Step Functions retry logic prevents transient failures from causing data loss
+- In production, DynamoDB Point-in-Time Recovery (PITR) would be enabled for full backup capability
+- S3 Glacier lifecycle policy archives inbox images after 90 days for long-term compliance
+
 ## Total Cost of Ownership (TCO)
 
 AWS Pricing Calculator estimate: https://calculator.aws/#/estimate?id=e1dbd6f0ff4b6966d9f8077a6afc6a606bd03752
