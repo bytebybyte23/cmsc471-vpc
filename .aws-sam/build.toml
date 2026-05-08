@@ -63,15 +63,6 @@ manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["CallTextractFunction"]
 
-[function_build_definitions.b777865d-659f-4b85-8ef6-3bb5d6b96f0a]
-codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\save_results"
-runtime = "python3.13"
-architecture = "x86_64"
-handler = "handler.handler"
-manifest_hash = "85afc3a999166aab337a42a1e61e8948"
-packagetype = "Zip"
-functions = ["SaveResultsFunction"]
-
 [function_build_definitions.2df5655b-2bbc-473d-97ee-8e1c81109a91]
 codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\records"
 runtime = "python3.13"
@@ -80,5 +71,14 @@ handler = "handler.handler"
 manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["RecordsFunction"]
+
+[function_build_definitions.a6da984d-2493-4901-8cdd-f22aec3cb971]
+codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\save_results"
+runtime = "python3.13"
+architecture = "x86_64"
+handler = "handler.handler"
+manifest_hash = "85afc3a999166aab337a42a1e61e8948"
+packagetype = "Zip"
+functions = ["SaveResultsFunction"]
 
 [layer_build_definitions]

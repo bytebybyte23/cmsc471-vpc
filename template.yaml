@@ -198,6 +198,18 @@ Resources:
         - AttributeName: jobId
           KeyType: HASH
 
+  RecordsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-records
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: recordId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: recordId
+          KeyType: HASH
+
   SubmitJobFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -320,6 +332,7 @@ Resources:
       Environment:
         Variables:
           JOBS_TABLE_NAME: !Ref JobsTable
+          RECORDS_TABLE_NAME: !Ref RecordsTable
 
   SaveResultsFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -355,6 +368,7 @@ Resources:
       Environment:
         Variables:
           JOBS_TABLE_NAME: !Ref JobsTable
+          RECORDS_TABLE_NAME: !Ref RecordsTable
       Events:
         ApiGetRecords:
           Type: Api
