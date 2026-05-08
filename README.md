@@ -115,3 +115,19 @@ aws cloudformation delete-stack --stack-name cmsc471-hello-stack
 | Reliability | Step Functions retry logic, DynamoDB on-demand billing |
 | Performance Efficiency | Lambda serverless compute, API Gateway regional endpoint |
 | Cost Optimization | Serverless pay-per-use, DynamoDB PAY_PER_REQUEST, Lambda auto-scaling |
+
+## Total Cost of Ownership (TCO)
+
+AWS Pricing Calculator estimate: https://calculator.aws/#/estimate?id=e1dbd6f0ff4b6966d9f8077a6afc6a606bd03752
+
+| Service | Monthly Cost |
+|---------|-------------|
+| AWS Lambda | $17.81 |
+| Amazon API Gateway | $3.50 |
+| Amazon S3 | $0.32 |
+| Amazon DynamoDB | $0.06 |
+| AWS Step Functions | $2.40 |
+| Amazon Textract | $1.50 |
+| **Total** | **$25.59/month** |
+
+Annual estimate: **$307.08/year** with $0 upfront cost. Serverless pay-per-use model means costs scale directly with usage.
