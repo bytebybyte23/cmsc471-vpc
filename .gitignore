@@ -1,5 +1,6 @@
 .aws-sam/
 *.zip
 response.json
-Credentials 2.txt
+Credentials*.txt
 sync.toml
+file.txt
