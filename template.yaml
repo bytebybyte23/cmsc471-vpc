@@ -160,6 +160,13 @@ Resources:
       PublicAccessBlockConfiguration:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ArchiveToGlacierAfter90Days
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
 
   InboxBucketBucketPolicy:
     Type: AWS::S3::BucketPolicy
