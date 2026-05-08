@@ -105,6 +105,7 @@ aws cloudformation delete-stack --stack-name cmsc471-hello-stack
 - **CloudFront** is not available in AWS Learner Lab (AccessDenied on cloudfront:ListDistributions). In production, CloudFront would distribute the static frontend globally with edge caching.
 - **Route 53** is not available in AWS Learner Lab (no hosted zones permitted). In production, Route 53 would handle DNS routing to CloudFront.
 - **ALB + Auto Scaling Group** replaced by API Gateway + Lambda serverless compute, which provides equivalent auto-scaling without managing EC2 instances.
+- **Trusted Advisor** is not available in AWS Learner Lab (AccessDenied on trustedadvisor:DescribeAccount). In production, Trusted Advisor would provide recommendations for cost optimization, security, fault tolerance, and performance.
 
 ## Well-Architected Review
 
