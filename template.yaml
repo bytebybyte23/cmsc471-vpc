@@ -73,7 +73,16 @@ Resources:
       TracingEnabled: true
       BinaryMediaTypes:
         - image/*
+        - image/jpeg
+        - image/png
+        - image/gif
+        - image/webp
         - multipart/form-data
+        - application/octet-stream
+      Cors:
+        AllowMethods: "'GET,POST,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
 
   HealthFunction:
     Type: AWS::Serverless::Function

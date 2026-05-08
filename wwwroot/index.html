@@ -135,7 +135,7 @@
 </footer>
 
 <script>
-    const API = '';  // same origin via API Gateway
+    const API = 'https://xvleig2cjd.execute-api.us-east-1.amazonaws.com/Prod';
 
     // ── Upload ──────────────────────────────────────────────
     async function uploadFile() {
@@ -148,7 +148,7 @@
 
         const res = await fetch(`${API}/api/inbox?key=${encodeURIComponent(file.name)}`, {
             method: 'POST',
-            headers: { 'Content-Type': file.type },
+            headers: { 'Content-Type': 'application/octet-stream' },
             body: file
         });
 

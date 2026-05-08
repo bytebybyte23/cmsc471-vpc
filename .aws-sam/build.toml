@@ -23,7 +23,7 @@ codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\inbox"
 runtime = "python3.13"
 architecture = "x86_64"
 handler = "handler.handler"
-manifest_hash = "37037abf6e9be7dbe4d04fb60de0a9d2"
+manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["Linbox"]
 
@@ -32,7 +32,7 @@ codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\submit_job"
 runtime = "python3.13"
 architecture = "x86_64"
 handler = "handler.handler"
-manifest_hash = "37037abf6e9be7dbe4d04fb60de0a9d2"
+manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["SubmitJobFunction"]
 
@@ -41,7 +41,7 @@ codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\poll_job"
 runtime = "python3.13"
 architecture = "x86_64"
 handler = "handler.handler"
-manifest_hash = "37037abf6e9be7dbe4d04fb60de0a9d2"
+manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["PollJobFunction"]
 
@@ -50,7 +50,7 @@ codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\fetch_image"
 runtime = "python3.13"
 architecture = "x86_64"
 handler = "handler.handler"
-manifest_hash = "37037abf6e9be7dbe4d04fb60de0a9d2"
+manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["FetchImageFunction"]
 
@@ -59,7 +59,7 @@ codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\call_textract"
 runtime = "python3.13"
 architecture = "x86_64"
 handler = "handler.handler"
-manifest_hash = "37037abf6e9be7dbe4d04fb60de0a9d2"
+manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["CallTextractFunction"]
 
@@ -68,7 +68,7 @@ codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\save_results"
 runtime = "python3.13"
 architecture = "x86_64"
 handler = "handler.handler"
-manifest_hash = "37037abf6e9be7dbe4d04fb60de0a9d2"
+manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["SaveResultsFunction"]
 
@@ -77,7 +77,7 @@ codeuri = "c:\\Users\\jermi\\Documents\\csmc-471vpc\\src\\records"
 runtime = "python3.13"
 architecture = "x86_64"
 handler = "handler.handler"
-manifest_hash = "37037abf6e9be7dbe4d04fb60de0a9d2"
+manifest_hash = "85afc3a999166aab337a42a1e61e8948"
 packagetype = "Zip"
 functions = ["RecordsFunction"]
 
